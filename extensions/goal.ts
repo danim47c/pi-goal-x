@@ -357,8 +357,17 @@ function isToolUseAssistantMessage(message: unknown): boolean {
 	return raw?.role === "assistant" && raw.stopReason === "toolUse";
 }
 
+function isErrorAssistantMessage(message: unknown): boolean {
+	const raw = asRecord(message);
+	return raw?.role === "assistant" && raw.stopReason === "error";
+}
+
 function hasAbortedAssistantMessage(messages: unknown[]): boolean {
 	return messages.some(isAbortedAssistantMessage);
+}
+
+function hasErrorAssistantMessage(messages: unknown[]): boolean {
+	return messages.some(isErrorAssistantMessage);
 }
 
 function usageChannelTokens(value: unknown): number {
@@ -3462,6 +3471,9 @@ promptGuidelines: [
 			pauseActiveGoal(ctx);
 			return;
 		}
+		// Provider failures are not completed work. Do not turn one failed hidden
+		// checkpoint into an unbounded auto-continue retry storm.
+		if (isErrorAssistantMessage(message)) return;
 		refreshGoalDisplayFromDisk(ctx);
 
 		// Archive a goal that was marked complete by complete_goal but whose archival
@@ -3690,6 +3702,11 @@ promptGuidelines: [
 		if (!reconcileFocusedGoalFromDisk(ctx)) return;
 		if (hasAbortedAssistantMessage(event.messages) || ctx.signal?.aborted) {
 			pauseActiveGoal(ctx);
+			return;
+		}
+		if (hasErrorAssistantMessage(event.messages)) {
+			persist(ctx);
+			updateUI(ctx);
 			return;
 		}
 		persist(ctx);

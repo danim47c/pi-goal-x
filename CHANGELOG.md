@@ -8,6 +8,14 @@ with the `0.x` prefix indicating pre-1.0 development.
 
 ---
 
+## [0.19.2] — 2026-07-16
+
+### Fixed
+
+- Stop automatic goal continuation after a provider error. A failed hidden
+  checkpoint now waits for an explicit retry instead of generating an unbounded
+  checkpoint/error loop.
+
 ## [0.19.1] — 2026-07-16
 
 ### Fixed
