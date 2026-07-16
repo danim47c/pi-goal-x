@@ -39,6 +39,7 @@ export interface GoalRecord {
 	sisyphus: boolean;
 	createdAt: string;
 	updatedAt: string;
+	completedAt?: string;
 	activePath?: string;
 	archivedPath?: string;
 	stopReason?: StopReason;

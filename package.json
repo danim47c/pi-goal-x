@@ -1,6 +1,6 @@
 {
   "name": "pi-goal-x",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "description": "Goal mode extension for pi: persistent long-running objectives, /goal-set drafting, Sisyphus prompt style, autoContinue, and an above-editor status overlay. Fork of @capyup/pi-goal.",
   "license": "MIT",
   "author": "pi-goal-x contributors",
@@ -17,11 +17,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tmonk/pi-goal-x.git"
+    "url": "git+https://github.com/danim47c/pi-goal-x.git"
   },
-  "homepage": "https://github.com/tmonk/pi-goal-x#readme",
+  "homepage": "https://github.com/danim47c/pi-goal-x#readme",
   "bugs": {
-    "url": "https://github.com/tmonk/pi-goal-x/issues"
+    "url": "https://github.com/danim47c/pi-goal-x/issues"
   },
   "files": [
     "extensions",
@@ -33,7 +33,7 @@
     "extensions": [
       "extensions/goal.ts"
     ],
-    "image": "https://github.com/tmonk/pi-goal-x/raw/main/screenshot.png"
+    "image": "https://github.com/danim47c/pi-goal-x/raw/main/screenshot.png"
   },
   "scripts": {
     "check": "tsc --noEmit",
@@ -46,9 +46,9 @@
     "typebox": "*"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "^0.74.0",
-    "@earendil-works/pi-coding-agent": "^0.74.0",
-    "@earendil-works/pi-tui": "^0.74.0",
+    "@earendil-works/pi-ai": "^0.80.8",
+    "@earendil-works/pi-coding-agent": "^0.80.8",
+    "@earendil-works/pi-tui": "^0.80.8",
     "typebox": "^1.0.58",
     "typescript": "^5.9.3"
   },

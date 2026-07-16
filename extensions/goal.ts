@@ -924,7 +924,9 @@ export default function goalExtension(pi: ExtensionAPI): void {
 		if (!focusEntry && focusedGoalId) {
 			try {
 				appendFocusEntry(focusedGoalId, legacyGoal?.id === focusedGoalId ? "migrated" : "selected");
-			} catch {}
+			} catch (error) {
+				void error; // Legacy focus migration is best-effort.
+			}
 		}
 		for (const [id, current] of goalsById) {
 			if (current.status === "complete") {
@@ -1073,7 +1075,9 @@ export default function goalExtension(pi: ExtensionAPI): void {
 				const filePath = `${DEBUG_GOALS_DIR}/debug_goal.md`;
 				try {
 					safeUnlinkGoalFile({ cwd: ctx.cwd }, DEBUG_GOALS_DIR, filePath);
-				} catch {}
+				} catch (error) {
+					void error; // Debug cleanup is best-effort.
+				}
 				const prevId = prev.id;
 				state.goal = null;
 				if (focusedGoalId === prevId) {
@@ -1336,16 +1340,21 @@ Verification contract:
 		}
 		continuationQueuedFor = goalId;
 		const settings = loadGoalSettings(ctx.cwd);
+		const goal = state.goal;
+		if (!goal || goal.id !== goalId) {
+			continuationQueuedFor = null;
+			return;
+		}
 		pi.sendMessage<GoalEventDetails>(
 			{
 				customType: GOAL_EVENT_ENTRY,
-				content: continuationPrompt(state.goal, settings),
+				content: continuationPrompt(goal, settings),
 				display: false,
 				details: {
 					kind: "checkpoint",
-					goalId: state.goal.id,
-					status: state.goal.status,
-					objective: state.goal.objective,
+					goalId: goal.id,
+					status: goal.status,
+					objective: goal.objective,
 					timestamp: Date.now(),
 				},
 			},
@@ -2324,7 +2333,7 @@ ${objective}` : objective,
 				// Reset autoContinue counter — plan changed, agent gets a fresh chain.
 				resetGetGoalNudgeState(state.goal.id);
 				// Mark turn-stopped so subsequent in-turn tool calls are blocked.
-				turnStoppedFor = state.goal.id;
+				turnStoppedFor = { goalId: state.goal.id, turnSeq };
 				syncGoalTools();
 				updateUI(ctx);
 				ctx.ui.notify(`Goal tweaked: ${truncateText(changeSummary, 160)}`, "info");
@@ -2498,7 +2507,7 @@ ${objective}` : objective,
 				};
 				state.goal = writeActiveGoalFile(ctx, state.goal);
 				pi.appendEntry(STATE_ENTRY, goalDetails(state.goal));
-				turnStoppedFor = state.goal?.id ?? null;
+				turnStoppedFor = state.goal ? { goalId: state.goal.id, turnSeq } : null;
 				resetGetGoalNudgeState(state.goal?.id);
 				syncGoalTools();
 				updateUI(ctx);
@@ -2565,7 +2574,7 @@ ${objective}` : objective,
 				};
 				state.goal = writeActiveGoalFile(ctx, state.goal);
 				pi.appendEntry(STATE_ENTRY, goalDetails(state.goal));
-				turnStoppedFor = state.goal?.id ?? null;
+				turnStoppedFor = state.goal ? { goalId: state.goal.id, turnSeq } : null;
 				resetGetGoalNudgeState(state.goal?.id);
 				syncGoalTools();
 				updateUI(ctx);
@@ -2695,7 +2704,7 @@ ${objective}` : objective,
 					};
 					state.goal = writeActiveGoalFile(ctx, state.goal);
 					pi.appendEntry(STATE_ENTRY, goalDetails(state.goal));
-					turnStoppedFor = state.goal?.id ?? null;
+					turnStoppedFor = state.goal ? { goalId: state.goal.id, turnSeq } : null;
 					resetGetGoalNudgeState(state.goal?.id);
 					syncGoalTools();
 					updateUI(ctx);
@@ -2713,7 +2722,7 @@ ${objective}` : objective,
 				} else {
 					// ── Continue working → pause the goal ──────────────
 					pauseActiveGoal(ctx);
-					turnStoppedFor = state.goal?.id ?? null;
+					turnStoppedFor = state.goal ? { goalId: state.goal.id, turnSeq } : null;
 					return {
 						content: [{ type: "text", text: "Goal paused — user chose to continue working after skipping audit." }],
 						details: state.goal ? goalDetails(state.goal) : undefined,
@@ -2796,7 +2805,7 @@ ${objective}` : objective,
 			};
 			state.goal = writeActiveGoalFile(ctx, state.goal);
 			pi.appendEntry(STATE_ENTRY, goalDetails(state.goal));
-			turnStoppedFor = state.goal?.id ?? null;
+			turnStoppedFor = state.goal ? { goalId: state.goal.id, turnSeq } : null;
 			resetGetGoalNudgeState(state.goal?.id);
 			syncGoalTools();
 			updateUI(ctx);
@@ -2863,7 +2872,7 @@ ${objective}` : objective,
 			resetGetGoalNudgeState(next.id);
 			// C9 fix: mark turn-stopped so subsequent in-turn tool calls are blocked.
 			// This is the schema-level closure of "agent kept writing files after pause_goal".
-			turnStoppedFor = state.goal.id;
+			turnStoppedFor = { goalId: state.goal.id, turnSeq };
 
 			const suggestionLine = suggested ? `\nSuggested: ${truncateText(suggested, 160)}` : "";
 			ctx.ui.notify(
@@ -2923,7 +2932,7 @@ ${objective}` : objective,
 			const archived = archiveCurrentGoal(ctx, "agent");
 			resetGetGoalNudgeState(abortedGoalId);
 			setGoal(null, ctx, true, "aborted");
-			turnStoppedFor = abortedGoalId;
+			turnStoppedFor = { goalId: abortedGoalId, turnSeq };
 
 			const archiveLine = archived?.archivedPath ? `\nArchive: ${archived.archivedPath}` : "";
 			ctx.ui.notify(
@@ -3112,7 +3121,7 @@ ${objective}` : objective,
 			}
 			state.goal = { ...state.goal, taskList, updatedAt: now };
 			setGoal(state.goal, ctx);
-			turnStoppedFor = state.goal.id;
+			turnStoppedFor = { goalId: state.goal.id, turnSeq };
 			resetGetGoalNudgeState(state.goal.id);
 			syncGoalTools();
 			updateUI(ctx);
@@ -3576,7 +3585,9 @@ promptGuidelines: [
 			if (!isActionableContinuationGoal(incomingGoalId)) {
 				try {
 					ctx.abort?.();
-				} catch {}
+				} catch (error) {
+					void error; // The stale checkpoint is still neutralized below.
+				}
 				updateUI(ctx);
 				return {
 					systemPrompt: `${currentSystemPrompt()}\n\n${staleContinuationPrompt(incomingGoalId, state.goal)}`,

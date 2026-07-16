@@ -11,6 +11,7 @@ import {
 	SessionManager,
 	SettingsManager,
 	type ExtensionContext,
+	type ModelRuntime,
 	type ResourceLoader,
 } from "@earendil-works/pi-coding-agent";
 import type { GoalRecord, GoalTask, GoalTaskList } from "./goal-record.ts";
@@ -314,11 +315,16 @@ export async function runGoalCompletionAuditor(args: {
 			},
 		});
 
+		// Pi 0.80 replaced createAgentSession({ modelRegistry }) with
+		// createAgentSession({ modelRuntime }). Reuse the parent's runtime so the
+		// isolated auditor inherits extension-registered providers and their
+		// configured auth (for example pi-openlimits/openlimits-codex).
+		const modelRuntime = (args.ctx.modelRegistry as unknown as { runtime?: ModelRuntime } | undefined)?.runtime;
 		const { session } = await createSession({
 			cwd: args.ctx.cwd,
 			model,
 			thinkingLevel,
-			modelRegistry: args.ctx.modelRegistry,
+			modelRuntime,
 			resourceLoader: makeAuditorResourceLoader(),
 			sessionManager: SessionManager.inMemory(args.ctx.cwd),
 			settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),

@@ -208,6 +208,39 @@ test("runGoalCompletionAuditor returns aborted error when signal is already abor
 	}
 });
 
+test("runGoalCompletionAuditor reuses the parent model runtime", async () => {
+	const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-goal-auditor-test-"));
+	try {
+		const model = { provider: "openlimits-codex", id: "gpt-5.6-sol" };
+		const modelRuntime = { marker: "parent-runtime" };
+		let sessionOptions: Record<string, unknown> | undefined;
+		const mockSession = {
+			abort: () => {},
+			subscribe: () => () => {},
+			prompt: async () => {},
+		};
+
+		await runGoalCompletionAuditor({
+			ctx: {
+				cwd,
+				model,
+				modelRegistry: { runtime: modelRuntime },
+			} as any,
+			goal: goal(),
+			detailedSummary: "test",
+			createSession: (async (options: Record<string, unknown>) => {
+				sessionOptions = options;
+				return { session: mockSession };
+			}) as any,
+		});
+
+		assert.equal(sessionOptions?.modelRuntime, modelRuntime);
+		assert.ok(!("modelRegistry" in (sessionOptions ?? {})));
+	} finally {
+		fs.rmSync(cwd, { recursive: true, force: true });
+	}
+});
+
 test("runGoalCompletionAuditor aborts running prompt when signal fires (abort during prompt)", async () => {
 	const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-goal-auditor-test-"));
 	try {

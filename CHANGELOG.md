@@ -8,6 +8,19 @@ with the `0.x` prefix indicating pre-1.0 development.
 
 ---
 
+## [0.19.1] — 2026-07-16
+
+### Fixed
+
+- **Pi 0.80 auditor authentication:** The isolated completion auditor now reuses the
+  parent `ModelRuntime` instead of passing the removed `modelRegistry` SDK option.
+  This preserves extension-registered providers and credentials, including
+  `openlimits-codex`, without duplicating API keys in `auth.json`.
+
+### Changed
+
+- Updated Pi development dependencies to 0.80.8 and adopted Bun's lockfile.
+
 ## [0.18.8] — 2026-06-10
 
 ### Changed
